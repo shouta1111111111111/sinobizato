@@ -7,13 +7,12 @@ body{font-family:sans-serif;text-align:center;background:#1a1a1a;color:#fff;marg
 .hand{display:flex;justify-content:center;gap:5px;flex-wrap:wrap;flex-grow:1;align-items:center}
 .card[data-type="火"]{background:#d32f2f}.card[data-type="水"]{background:#1976d2}.card[data-type="土"]{background:#f57c00}.card[data-type="風"]{background:#388e3c}.card[data-type="雷"]{background:#fbc02d}
 .card{width:60px;height:85px;border:2px solid #fff;border-radius:5px;position:relative;cursor:pointer;transition:0.2s}
-.card.selected{transform:translateY(-15px);border-color:#f1c40f;box-shadow:0 0-10px #f1c40f}
-.card.disabled{opacity:0.3;filter:grayscale(1);pointer-events:none}
+.card.selected{transform:translateY(-15px);border-color:#f1c40f;box-shadow:0 0 10px #f1c40f}
 .card img{width:100%;height:70%;object-fit:cover;pointer-events:none}
 .card-label{font-size:12px;font-weight:700;color:#fff;background:rgba(0,0,0,0.5)}
 #battle-center{height:20%;background:rgba(0,0,0,.6);display:flex;flex-direction:column;align-items:center;justify-content:center;border-top:1px solid #555;border-bottom:1px solid #555;z-index:10}
-.decide-btn{padding:15px 40px;font-size:1.2rem;border-radius:30px;border:none;background:#e74c3c;color:#fff;font-weight:700;box-shadow:0 4px 0 #c0392b;cursor:pointer;margin:5px 0}
-.decide-btn:active{transform:translateY(2px);box-shadow:none}
+.decide-btn{padding:18px 50px;font-size:1.3rem;border-radius:40px;border:none;background:#e74c3c;color:#fff;font-weight:700;box-shadow:0 6px 0 #c0392b;cursor:pointer;margin:10px 0;touch-action:manipulation}
+.decide-btn:active{transform:translateY(3px);box-shadow:none}
 .waiting{opacity:.2;pointer-events:none}
 #flash-div{position:fixed;top:0;left:0;width:100%;height:100%;z-index:1000;pointer-events:none}
 @keyframes flash{0%{background:rgba(255,255,255,0)}50%{background:rgba(255,255,255,.8)}100%{background:rgba(255,255,255,0)}}
@@ -27,10 +26,10 @@ body{font-family:sans-serif;text-align:center;background:#1a1a1a;color:#fff;marg
 <div id="overlay" class="modal"><h2>交代してください</h2><button class="mode-btn" onclick="closeOverlay()">準備完了</button></div>
 <script>
 const icons={'火':'https://livedoor.blogimg.jp/pokeruto_narutostorm/imgs/9/d/9df794cc.png','水':'https://ooyake01.com/wp-content/uploads/2019/07/%E6%89%89%E9%96%93.png','土':'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQgUZKzoGoqlDT7mUC9X8fE76pwS8yTZOsQJWSf0JLyzQ&s=10','風':'https://otakotaku.com/asset/img/character/2017/10/uzumaki-naruto-59dbafb3a0d9ep.jpg','雷':'https://images-na.ssl-images-amazon.com/images/I/71rse6gO0XL._CR550,250,1420,1420_.jpg'},rel={'火':'風','風':'雷','雷':'土','土':'水','水':'火'},winAgainst={'風':'火','雷':'風','土':'雷','水':'土','火':'水'};
-let hands,scores,selected,confirmed,turn,gameMode,p1Data,p2Data,firstPointPlayer=null,bannedTypes=[];
+let hands,scores,selected,confirmed,turn,gameMode,p1Data,p2Data,firstPointPlayer=null,bannedCombo=null;
 function startGame(m){gameMode=m;document.getElementById('start-screen').style.display='none';initGame();}
 function initGame(){
-    hands={1:['火','水','土','風','雷'],2:['火','水','土','風','雷']};scores={1:0,2:0};selected={1:[],2:[]};confirmed={1:!1,2:!1};turn=1;firstPointPlayer=null;bannedTypes=[];
+    hands={1:['火','水','土','風','雷'],2:['火','水','土','風','雷']};scores={1:0,2:0};selected={1:[],2:[]};confirmed={1:!1,2:!1};turn=1;firstPointPlayer=null;bannedCombo=null;
     document.getElementById('p2-btn').style.visibility=(gameMode==='COM')?'hidden':'visible';renderHands();unlockArea(1);unlockArea(2);
 }
 function renderHands(){
@@ -38,27 +37,41 @@ function renderHands(){
         const t=document.getElementById(`p${p}-hand`);t.innerHTML="";
         if(gameMode==='COM'&&p===2){hands[p].forEach(()=>{const e=document.createElement("div");e.className="card";e.style.background="#555";t.appendChild(e);});}
         else{hands[p].forEach(n=>{
-            const isSel=selected[p].includes(n),isBan=bannedTypes.includes(n),o=document.createElement("div");
-            o.className=`card ${isSel?"selected":""} ${isBan?"disabled":""}`;o.dataset.type=n;
+            const isSel=selected[p].includes(n),o=document.createElement("div");
+            o.className=`card ${isSel?"selected":""}`;o.dataset.type=n;
             o.innerHTML=`<img src="${icons[n]}"><div class="card-label">${n}</div>`;
-            o.onclick=()=>{if(!confirmed[p]&&!isBan){isSel?selected[p]=selected[p].filter(x=>x!==n):selected[p].push(n);renderHands();}};t.appendChild(o);
+            o.onclick=()=>{if(!confirmed[p]){isSel?selected[p]=selected[p].filter(x=>x!==n):selected[p].push(n);renderHands();}};t.appendChild(o);
         });}
     }
     document.getElementById('score-line').innerText=`P1: ${scores[1]}点 | P2: ${scores[2]}点`;
 }
 function confirmMove(p){
-    if(selected[p].length===0)return;
-    if(selected[p].length===2&&!(selected[p].includes('水')&&selected[p].includes('風')))return alert("2枚出しは氷遁のみ");
-    if(selected[p].length===3&&!(selected[p].includes('火')&&selected[p].includes('風')&&selected[p].includes('土')))return alert("3枚出しは塵遁のみ");
-    if(p===1)p1Data=[...selected[1]];else p2Data=[...selected[2]];
+    const s = selected[p].sort();
+    if(s.length===0)return;
+    if(bannedCombo && s.join("") === bannedCombo){
+        alert("先ほどと同じ組み合わせは出せません！別の出し方をしてください。");
+        return;
+    }
+    if(s.length===2&&!(s.includes('水')&&s.includes('風')))return alert("2枚出しは氷遁のみ");
+    if(s.length===3&&!(s.includes('火')&&s.includes('風')&&s.includes('土')))return alert("3枚出しは塵遁のみ");
+    
+    if(p===1)p1Data=[...s];else p2Data=[...s];
     confirmed[p]=!0;selected[p]=[];renderHands();lockArea(p);
     if(confirmed[1]){if(gameMode==='COM')setTimeout(comTurn,500);else if(confirmed[2])battle();else showOverlay();}
 }
 function comTurn(){
-    const h=hands[2].filter(x=>!bannedTypes.includes(x)),t=hands[1];let c=[];
-    if(h.includes('火')&&h.includes('風')&&h.includes('土'))c=['火','風','土'];
-    else if(h.includes('水')&&h.includes('風')&&Math.random()>0.5)c=['水','風'];
-    else{let a=t.map(x=>winAgainst[x]).filter(x=>h.includes(x));c=a.length>0?[a[Math.floor(Math.random()*a.length)]]:[h[Math.floor(Math.random()*h.length)]];}
+    const h=hands[2],t=hands[1];let c=[];
+    // COM思考ルーチン（禁止コンボを避ける）
+    const canDust = h.includes('火')&&h.includes('風')&&h.includes('土') && bannedCombo!=="火風土";
+    const canIce = h.includes('水')&&h.includes('風') && bannedCombo!=="水風";
+    
+    if(canDust)c=['火','風','土'];
+    else if(canIce && Math.random()>0.5)c=['水','風'];
+    else{
+        let a=t.map(x=>winAgainst[x]).filter(x=>h.includes(x));
+        c=a.length>0?[a[Math.floor(Math.random()*a.length)]]:[h[Math.floor(Math.random()*h.length)]];
+        if(c.length===1 && bannedCombo === c[0]) c = [h.find(x => x !== c[0]) || h[0]];
+    }
     p2Data=c;confirmed[2]=!0;battle();
 }
 function battle(){
@@ -66,16 +79,23 @@ function battle(){
     if(m1.length>m2.length)win=1;else if(m2.length>m1.length)win=2;
     else if(m1.length===1){if(rel[m1[0]]===m2[0])win=1;else if(rel[m2[0]]===m1[0])win=2;}
     const f=document.getElementById('flash-div');f.style.animation='none';setTimeout(()=>{f.style.animation='flash 0.4s'},10);
+    
     if(win!==0){
-        scores[win]++;if(firstPointPlayer===null)firstPointPlayer=win;bannedTypes=[];
+        scores[win]++;if(firstPointPlayer===null)firstPointPlayer=win;bannedCombo=null;
         m1.forEach(c=>hands[1].splice(hands[1].indexOf(c),1));m2.forEach(c=>hands[2].splice(hands[2].indexOf(c),1));
         document.getElementById('status-msg').innerText=`P${win}の勝利！`;
     }else{
-        if(m1.join("")===m2.join("")&&turn===1){bannedTypes=[...m1];document.getElementById('status-msg').innerText="1回目あいこ！別の巻物を！";}
-        else{bannedTypes=[];m1.forEach(c=>hands[1].splice(hands[1].indexOf(c),1));m2.forEach(c=>hands[2].splice(hands[2].indexOf(c),1));document.getElementById('status-msg').innerText="引き分け";}
+        if(m1.join("")===m2.join("")&&turn===1){
+            bannedCombo=m1.join("");
+            document.getElementById('status-msg').innerText="1回目あいこ！同じ組み合わせは禁止！";
+        }else{
+            bannedCombo=null;
+            m1.forEach(c=>hands[1].splice(hands[1].indexOf(c),1));m2.forEach(c=>hands[2].splice(hands[2].indexOf(c),1));
+            document.getElementById('status-msg').innerText="引き分け";
+        }
     }
     document.getElementById('last-moves').innerHTML=`P1:${m1.join("+")} vs P2:${m2.join("+")}`;
-    if(bannedTypes.length===0)turn++;
+    if(!bannedCombo)turn++;
     renderHands();
     if(scores[1]>=2||scores[2]>=2||hands[1].length===0||hands[2].length===0)setTimeout(judgeFinal,800);
     else{confirmed={1:!1,2:!1};unlockArea(1);unlockArea(2);}
